@@ -1,0 +1,92 @@
+bool isDeleted(fileHead *f) {
+	return f[0] == 0xE5;
+}
+
+//result must be freed
+char* copyFileName(fileHead *f) {
+	char* result = malloc(FILE_NAME_MAX_LENGTH+1);
+	if(result == NULL) {
+		fprintf(stderr, "malloc failed to allocator memory for copyFileName\n");
+		perror("");
+		exit(1);
+	}
+	int i;
+	for(i = 0; i < FILE_NAME_MAX_LENGTH; i++) {
+		if(f[i] == ' ')
+			break;
+		result[i] = f[i];
+	}
+	result[i] = '\0';
+	if(isDeleted(f)) {
+		result[0] = '_';
+	}
+	return result;
+}
+
+//result must be freed
+char* copyFileExt(fileHead *f) {
+	char* result = malloc(EXTENSION_MAX_LENGTH+1);
+	if(result == NULL) {
+		fprintf(stderr, "malloc failed to allocator memory for copyFileExt\n");
+		perror("");
+		exit(1);
+	}
+	int i;
+	for(i = 0; i < EXTENSION_MAX_LENGTH; i++) {
+		if(f[i+FILE_NAME_MAX_LENGTH] == ' ')
+			break;
+		result[i] = f[i+FILE_NAME_MAX_LENGTH];
+	}
+	result[i] = '\0';
+	return result;
+}
+
+bool isDirectory(fileHead *f) {
+	char attributes = f[11];
+	return (attributes & 0x10) > 0;
+}
+
+int getFileSize(fileHead *f) {
+	return f[28] | f[29] << 8 | f[30] << 16 | f[31] << 24;
+}
+
+int getFirstClusterIndex(fileHead *f) {
+	return f[26] | f[27] << 8;
+}
+
+int getNextClusterIndex(int index) {
+	int adjIndex = (index * 3)/2;
+	unsigned char nibble, byte;
+	int result;
+	if(index%2 == 0) {
+		byte = fat1[adjIndex];
+		nibble = fat1[adjIndex+1] & 0x0F;
+		result = nibble << 8 | byte;
+	} else {
+		byte = fat1[adjIndex+1];
+		nibble = fat1[adjIndex] & 0xF0;
+		result = byte << 4 | nibble >> 4;
+	}
+	return result;
+}
+
+bool isMarkedFatFree(int clusterIndex) {
+	return getNextClusterIndex(clusterIndex) == 0;
+}
+
+cluster* getCluster(int clusterIndex) {
+#define START_CLUSTER_INDEX 2
+	return img + (DATA_SECTOR+clusterIndex-START_CLUSTER_INDEX)*SECTOR_SIZE_IN_BYTES;
+}
+
+unsigned int getNumDigits(unsigned int x) {
+	if(x == 0) {
+		return 1;
+	}
+	int count = 0;
+	while(x != 0) {
+		count++;
+		x = x/10;
+	}
+	return count;
+}

@@ -1,0 +1,101 @@
+#!/bin/bash
+IMAGE_DIR="Images"
+BLANK_IMAGE_NAME="blankfloppy.img"
+IMAGE_NAME="tmp.img"
+OUTPUT_DIR="bashOutput"
+
+MAX_DEPTH=5
+DIRS_AT_DEPTH=3
+FILES_AT_DEPTH=10
+
+numFilesCreated=0
+numDirCreated=0
+declare -a chosenSubdirectories
+
+#set up
+echo "Creating blank image"
+cd $IMAGE_DIR
+cp $BLANK_IMAGE_NAME "tmp.img"
+
+#create test file
+echo "Creating test file"
+
+#create directories and files
+#start at root and travel down subdirectories
+echo "Creating directories and files"
+currDir="" 
+for ((i=0; i<$MAX_DEPTH; i++))
+do
+	#create files in current directory
+	for ((j=0; j<$FILES_AT_DEPTH; j++))
+	do
+		mcopy -i $IMAGE_NAME tmp.txt ::$currDir/$numFilesCreated.txt
+		let numFilesCreated++
+	done
+	#create subdirectories
+	for ((j=0; j<$DIRS_AT_DEPTH; j++))
+	do
+		mmd -i $IMAGE_NAME ::$currDir/$j
+		let numDirCreated++
+	done
+	#pick a random directory to go to for next level
+	chosenSubdirectories[i]=$(( $RANDOM%DIRS_AT_DEPTH ))
+	currDir=$currDir/${chosenSubdirectories[i]}
+done
+
+echo "Created $numFilesCreated files"
+echo "Created $numDirCreated directories"
+
+numFilesCreated=0
+numDirCreated=0
+echo "Deleting some directories and files"
+
+currDir=""
+for ((i=0; i<1; i++))
+do
+	#delete files in current directory
+	for ((j=0; j<$FILES_AT_DEPTH; j++))
+	do
+		mdel -i $IMAGE_NAME ::$currDir/$numFilesCreated.txt
+		let numFilesCreated++
+	done
+	#delete subdirectories
+	for ((j=0; j<$DIRS_AT_DEPTH; j++))
+	do
+		mdeltree -i $IMAGE_NAME ::$currDir/$j
+		let numDirCreated++
+	done
+	#go to subdirectory
+	currDir=$currDir/${chosenSubdirectories[i]}
+done
+
+#move back up to base directory
+cd ..
+
+#recreate output directory
+echo "Clearing output directory"
+rm -r $OUTPUT_DIR
+mkdir $OUTPUT_DIR
+
+#run code
+echo "Running notjustcats"
+make
+./notjustcats $IMAGE_DIR/tmp.img $OUTPUT_DIR
+
+#check created files
+cd $OUTPUT_DIR
+passed=1
+for file in *
+do
+	if ! diff $file ../$IMAGE_DIR/tmp.txt >/dev/null
+	then
+		echo "files unequal"
+		passed=0
+	fi
+done
+if [[ passed -eq 1 ]]
+then
+	echo "Passed test"
+else
+	echo "Failed test"
+fi

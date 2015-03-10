@@ -1,0 +1,16 @@
+DESCRIPTION:
+Project 4 is file recovery software for FAT-12 disk images.
+
+USAGE:
+Compile by calling:
+make
+which will produce an executable called "notjustcats" (my professor named this one).
+Then run the executable like:
+./notjustcats <image filename> <output_directory>
+
+KNOWN PROBLEMS:
+Large Deleted Directories
+If a directory spans multiple clusters (> 16 entries) and that directory gets deleted, then my implementation only recovers the first 16 entries. The rest are lost. To recover the rest would require more data structures to keep track of which directories you've seen (a hashtable is sufficient).
+
+DESIGN:
+My implementation is fairly straightforward. Nothing fancy.
